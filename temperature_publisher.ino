@@ -1,28 +1,35 @@
 #include <ESP8266WiFi.h>
 #include <PubSubClient.h>
+#include <DHT.h>
 
-const char* ssid = "SSID";
-const char* password = "PASS";
+#define WIFI_SSID "SSID"
+#define WIFI_PASS "PASS"
 
-const char* mqtt_server = "192.168.1.1";
+#define MQTT_SERVER "192.168.1.1"
 
-WiFiClient espClient;
-PubSubClient client(espClient);
+#define DHT11_PIN D1
+
+WiFiClient wifiClient;
+PubSubClient pubSubClient(wifiClient);
+
+DHT dht(DHT11_PIN, DHT11);
 
 void setup() {
   Serial.begin(9600);
-  Serial.println("start");
-  setup_wifi();
-  client.setServer(mqtt_server, 1883);
+  Serial.println("Serial begin");
+
+  setupWifi();
+
+  pubSubClient.setServer(MQTT_SERVER, 1883);
+
+  dht.begin();
 }
 
-void setup_wifi() {
-  delay(10);
-
+void setupWifi() {
   Serial.print("Connecting to ");
-  Serial.println(ssid);
+  Serial.println(WIFI_SSID);
 
-  WiFi.begin(ssid, password);
+  WiFi.begin(WIFI_SSID, WIFI_PASS);
 
   while (WiFi.status() != WL_CONNECTED) {
     delay(500);
@@ -36,13 +43,13 @@ void setup_wifi() {
 }
 
 void reconnect() {
-  while (!client.connected()) {
-    Serial.print("Attempting MQTT connection...");
-    if (client.connect("ESP8266Client")) {
-      Serial.println("connected");
+  while (!pubSubClient.connected()) {
+    Serial.print("Attempting MQTT connection... ");
+    if (pubSubClient.connect("ESP8266Client")) {
+      Serial.println("Connected");
     } else {
-      Serial.print("failed, rc=");
-      Serial.print(client.state());
+      Serial.print("Failed, rc=");
+      Serial.print(pubSubClient.state());
       Serial.println(" try again in 5 seconds");
       delay(5000);
     }
@@ -50,23 +57,27 @@ void reconnect() {
 }
 
 void loop() {
-  if (!client.connected()) {
+  if (!pubSubClient.connected()) {
     reconnect();
   }
 
-  client.loop();
+  pubSubClient.loop();
 
   const char* topic = "sensor/temperature";
 
-  char message[8];
-  int random = (rand() % 5) + 25;
-  sprintf(message, "%d", random);
+  float temperature = dht.readTemperature();
 
-  Serial.print("publishing ");
-  Serial.print(message);
-  Serial.print(" on ");
-  Serial.println(topic);
-  client.publish("sensor/temperature", "32");
+  if (!isnan(temperature)) {
+    char message[16];
+    sprintf(message, "%f", temperature);
 
-  delay(100);
+    pubSubClient.publish(topic, message);
+
+    Serial.print("Published ");
+    Serial.print(message);
+    Serial.print(" on ");
+    Serial.println(topic);
+  }
+
+  delay(1000);
 }
