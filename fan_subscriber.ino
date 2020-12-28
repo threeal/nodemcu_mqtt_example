@@ -1,13 +1,21 @@
 #include <ESP8266WiFi.h>
 #include <PubSubClient.h>
 
-#define WIFI_SSID "Kontrakan Bersama"
-#define WIFI_PASS "ipkempat"
+#define WIFI_SSID "SSID"
+#define WIFI_PASS "PASS"
 
-#define MQTT_SERVER "192.168.1.21"
+#define MQTT_SERVER "192.168.1.1"
+
+#define L9110_INA_PIN D1
+#define L9110_INB_PIN D2
 
 WiFiClient wifiClient;
 PubSubClient pubSubClient(wifiClient);
+
+float temperature = 30;
+
+long prev;
+long counter;
 
 void setup() {
   Serial.begin(9600);
@@ -17,6 +25,15 @@ void setup() {
 
   pubSubClient.setServer(MQTT_SERVER, 1883);
   pubSubClient.setCallback(callback);
+
+  pinMode(L9110_INA_PIN, OUTPUT);
+  pinMode(L9110_INB_PIN, OUTPUT);
+
+  digitalWrite(L9110_INA_PIN, LOW);
+  digitalWrite(L9110_INB_PIN, LOW);
+
+  prev = millis();
+  counter = 0;
 }
 
 void setupWifi() {
@@ -58,12 +75,53 @@ void loop() {
 
   pubSubClient.loop();
 
-  delay(100);
+  float intensity = (temperature - 30) / 5;
+  if (intensity < 0) {
+    intensity = 0;
+  } else if (intensity > 1) {
+    intensity = 1;
+  }
+
+  long now = millis();
+
+  counter += now - prev;
+  if (counter < (float)200 * intensity) {
+    digitalWrite(L9110_INA_PIN, HIGH);
+  } else if (counter < 200) {
+    digitalWrite(L9110_INA_PIN, LOW);
+  } else {
+    digitalWrite(L9110_INA_PIN, HIGH);
+
+    const char* topic = "sensor/fan_speed";
+
+    char message[16];
+    sprintf(message, "%f", intensity);
+
+    pubSubClient.publish(topic, message);
+
+    Serial.print("Published ");
+    Serial.print(message);
+    Serial.print(" on ");
+    Serial.println(topic);
+
+    counter -= 200;
+  }
+
+  prev = now;
 }
 
 void callback(char* topic, byte* message, unsigned int length) {
+  String str;
+
   Serial.print("Received ");
-  Serial.print((char*)message);
+  for (unsigned int i = 0; i < length; ++i) {
+    Serial.print((char)message[i]);
+    str += (char)message[i];
+  }
   Serial.print(" on ");
   Serial.println(topic);
+
+  if (String(topic) == "sensor/temperature") {
+    temperature = atof(str.c_str());
+  }
 }

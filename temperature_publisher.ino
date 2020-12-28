@@ -23,6 +23,8 @@ void setup() {
   pubSubClient.setServer(MQTT_SERVER, 1883);
 
   dht.begin();
+
+  prev = millis();
 }
 
 void setupWifi() {
@@ -63,11 +65,11 @@ void loop() {
 
   pubSubClient.loop();
 
-  const char* topic = "sensor/temperature";
-
   float temperature = dht.readTemperature();
 
   if (!isnan(temperature)) {
+    const char* topic = "sensor/temperature";
+
     char message[16];
     sprintf(message, "%f", temperature);
 
