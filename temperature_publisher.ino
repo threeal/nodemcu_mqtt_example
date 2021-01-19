@@ -23,8 +23,6 @@ void setup() {
   pubSubClient.setServer(MQTT_SERVER, 1883);
 
   dht.begin();
-
-  prev = millis();
 }
 
 void setupWifi() {
