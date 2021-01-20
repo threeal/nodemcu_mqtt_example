@@ -87,33 +87,31 @@ int updatePeopleCount(int newPeopleCount) {
 
 void loop() {
   if (checkOutside()) {
+    Serial.println("Waiting someone to come in");
     while (!checkInside()) {
       delay(5);
     }
 
-    if (!pubSubClient.connected()) {
-      reconnect();
-    }
+    updatePeopleCount(peopleCount + 1);
 
-    pubSubClient.loop();
+    Serial.print("Someone came in, ");
+    Serial.print(peopleCount);
+    Serial.println(" people inside");
 
-    Serial.print("Ada orang masuk ");
-    Serial.println(updatePeopleCount(peopleCount + 1));
-
-    while (checkInside() || checkOutside()) {
-      delay(5);
-    }
+    delay(1000);
   } else if (checkInside()) {
+    Serial.println("Waiting someone to come out");
     while (!checkOutside()) {
       delay(5);
     }
 
-    Serial.print("Ada orang keluar ");
-    Serial.println(updatePeopleCount(peopleCount - 1));
+    updatePeopleCount(peopleCount - 1);
 
-    while (checkInside() || checkOutside()) {
-      delay(5);
-    }
+    Serial.print("Someone came out, ");
+    Serial.print(peopleCount);
+    Serial.println(" people inside");
+
+    delay(1000);
   }
 }
 
@@ -127,7 +125,7 @@ bool checkDistance(int triggerPin, int echoPin) {
   long duration = pulseIn(echoPin, HIGH);
   float distance = (duration / 2) / 29.1;
 
-  return distance >= 5 && distance <= 100;
+  return distance >= 5 && distance <= 20;
 }
 
 bool checkOutside() {
