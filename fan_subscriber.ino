@@ -12,6 +12,7 @@
 WiFiClient wifiClient;
 PubSubClient pubSubClient(wifiClient);
 
+int people_count = 2;
 float temperature = 30;
 
 long prev;
@@ -75,7 +76,7 @@ void loop() {
 
   pubSubClient.loop();
 
-  float intensity = (temperature - 30) / 5;
+  float intensity = (people_count / 3) + (temperature - 30) / 15;
   if (intensity < 0) {
     intensity = 0;
   } else if (intensity > 1) {
@@ -123,5 +124,7 @@ void callback(char* topic, byte* message, unsigned int length) {
 
   if (String(topic) == "sensor/temperature") {
     temperature = atof(str.c_str());
+  } else if (String(topic) == "sensor/people_count") {
+    people_count = atoi(str.c_str());
   }
 }

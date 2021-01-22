@@ -1,5 +1,6 @@
 #include <ESP8266WiFi.h>
 #include <PubSubClient.h>
+#include <DHT.h>
 
 #define WIFI_SSID "SSID"
 #define WIFI_PASS "PASS"
@@ -10,11 +11,14 @@
 #define OUTSIDE_ECHO_PIN D2
 #define INSIDE_TRIGGER_PIN D3
 #define INSIDE_ECHO_PIN D4
+#define DHT11_PIN D1
 
 WiFiClient wifiClient;
 PubSubClient pubSubClient(wifiClient);
 
 int peopleCount = 0;
+
+DHT dht(DHT11_PIN, DHT11);
 
 void setup() {
   Serial.begin(9600);
@@ -28,6 +32,8 @@ void setup() {
   pinMode(OUTSIDE_ECHO_PIN, INPUT);
   pinMode(INSIDE_TRIGGER_PIN, OUTPUT);
   pinMode(INSIDE_ECHO_PIN, INPUT);
+
+  dht.begin();
 }
 
 void setupWifi() {
@@ -50,7 +56,7 @@ void setupWifi() {
 void reconnect() {
   while (!pubSubClient.connected()) {
     Serial.print("Attempting MQTT connection... ");
-    if (pubSubClient.connect("people_count_publisher")) {
+    if (pubSubClient.connect("mixed_publisher")) {
       Serial.println("Connected");
     } else {
       Serial.print("Failed, rc=");
@@ -83,7 +89,34 @@ void updatePeopleCount(int newPeopleCount) {
   Serial.println(topic);
 }
 
+void updateTemperature() {
+  while (!pubSubClient.connected()) {
+    reconnect();
+  }
+
+  pubSubClient.loop();
+
+  float temperature = dht.readTemperature();
+
+  if (!isnan(temperature)) {
+    const char* topic = "sensor/temperature";
+
+    char message[16];
+    sprintf(message, "%f", temperature);
+
+    pubSubClient.publish(topic, message);
+
+    Serial.print("Published ");
+    Serial.print(message);
+    Serial.print(" on ");
+    Serial.println(topic);
+  }
+}
+
 void loop() {
+  updateTemperature();
+  delay(30);
+
   if (checkOutside()) {
     Serial.println("Waiting someone to come in");
     while (!checkInside()) {
