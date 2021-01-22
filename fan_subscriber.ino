@@ -60,6 +60,7 @@ void reconnect() {
     if (pubSubClient.connect("fan_subscriber")) {
       Serial.println("Connected");
       pubSubClient.subscribe("sensor/temperature");
+      pubSubClient.subscribe("sensor/people_count");
     } else {
       Serial.print("Failed, rc=");
       Serial.print(pubSubClient.state());
